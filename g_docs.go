@@ -498,10 +498,15 @@ func parserComments(comments *ast.CommentGroup, funcName, controllerName, pkgpat
 						para.Format = paraFormat
 					}
 				}
-				if len(p) > 4 {
+				switch len(p) {
+				case 5:
 					para.Required, _ = strconv.ParseBool(p[3])
 					para.Description = strings.Trim(p[4], `" `)
-				} else {
+				case 6:
+					para.Default = p[3]
+					para.Required, _ = strconv.ParseBool(p[4])
+					para.Description = strings.Trim(p[5], `" `)
+				default:
 					para.Description = strings.Trim(p[3], `" `)
 				}
 				opts.Parameters = append(opts.Parameters, para)
@@ -587,16 +592,12 @@ func getparams(str string) []string {
 	var j int
 	var start bool
 	var r []string
-	for i, c := range []rune(str) {
-		if unicode.IsSpace(c) {
+	var quoted int8
+	for _, c := range []rune(str) {
+		if unicode.IsSpace(c) && quoted == 0 {
 			if !start {
 				continue
 			} else {
-				if j == 3 {
-					r = append(r, string(s))
-					r = append(r, strings.TrimSpace((str[i+1:])))
-					break
-				}
 				start = false
 				j++
 				r = append(r, string(s))
@@ -604,8 +605,16 @@ func getparams(str string) []string {
 				continue
 			}
 		}
+
 		start = true
+		if c == '"' {
+			quoted ^= 1
+			continue
+		}
 		s = append(s, c)
+	}
+	if len(s) > 0 {
+		r = append(r, string(s))
 	}
 	return r
 }
